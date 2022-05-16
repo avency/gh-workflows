@@ -9,6 +9,14 @@ on:
       url:
         required: true
         type: string
+      username:
+        required: false
+        type: string
+        default: ""
+      password:
+        required: false
+        type: string
+        default: ""
     secrets:
       HOST:
         required: true
@@ -23,12 +31,14 @@ jobs:
 
     steps:
       - name: Check HTTP status
-        uses: gerdemann/http-status-code@1.0.0
+        uses: gerdemann/http-status-code@1.1.0
         with:
           url: ${{ inputs.url }}
           code: 200
           timeout: 60
           interval: 10
+          username: ${{ inputs.username }}
+          password: ${{ inputs.password }}
           
       - name: Clear cache and warmup cache
         uses: appleboy/ssh-action@c732d38392bd59adadcb5e688fb1f7f1d29c6951
