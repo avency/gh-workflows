@@ -1,0 +1,72 @@
+name: InitNeos
+
+on:
+  workflow_call:
+    inputs:
+      containername:
+        required: true
+        type: string
+      url:
+        required: true
+        type: string
+    secrets:
+      HOST:
+        required: true
+      USERNAME:
+        required: true
+      AVENCY_SSH_KEY:
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check HTTP status
+        uses: gerdemann/http-status-code@1.0.0
+        with:
+          url: ${{ inputs.url }}
+          code: 200
+          timeout: 60
+          interval: 10
+          
+      - name: Clear cache and warmup cache
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.AVENCY_SSH_KEY }}
+          script: |
+            phpContainerID=$(docker ps -aqf "name=${{ inputs.containername }}")
+            docker exec $phpContainerID su -c "/data/flow flow:cache:flush && /data/flow flow:cache:warmup" -s /bin/sh www-data
+            if [ $? != 0 ]
+            then
+               exit 1
+            fi
+            
+      - name: Migrate database
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.AVENCY_SSH_KEY }}
+          script: |
+            phpContainerID=$(docker ps -aqf "name=${{ inputs.containername }}")
+            docker exec $phpContainerID su -c "/data/flow doctrine:migrate" -s /bin/sh www-data
+            if [ $? != 0 ]
+            then
+               exit 1
+            fi
+      - name: Publish resources
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.AVENCY_SSH_KEY }}
+          script: |
+            phpContainerID=$(docker ps -aqf "name=${{ inputs.containername }}")
+            docker exec $phpContainerID su -c "/data/flow flow:resource:publish --collection static" -s /bin/sh www-data
+            if [ $? != 0 ]
+            then
+               exit 1
+            fi
