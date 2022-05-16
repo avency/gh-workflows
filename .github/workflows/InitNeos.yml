@@ -36,7 +36,7 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.AVENCY_SSH_KEY }}
-          timeout: 60
+          command_timeout: 60s
           script: |
             phpContainerID=$(docker ps -aqf "name=${{ inputs.containername }}")
             docker exec $phpContainerID su -c "/data/flow flow:cache:flush && /data/flow flow:cache:warmup" -s /bin/sh www-data
@@ -51,7 +51,7 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.AVENCY_SSH_KEY }}
-          timeout: 300
+          command_timeout: 300s
           script: |
             phpContainerID=$(docker ps -aqf "name=${{ inputs.containername }}")
             docker exec $phpContainerID su -c "/data/flow doctrine:migrate" -s /bin/sh www-data
@@ -65,7 +65,7 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.AVENCY_SSH_KEY }}
-          timeout: 300
+          command_timeout: 300s
           script: |
             phpContainerID=$(docker ps -aqf "name=${{ inputs.containername }}")
             docker exec $phpContainerID su -c "/data/flow flow:resource:publish --collection static" -s /bin/sh www-data
