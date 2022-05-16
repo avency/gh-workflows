@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Check HTTP status
-        uses: gerdemann/http-status-code@1.1.1
+        uses: gerdemann/http-status-code@main
         with:
           url: ${{ inputs.url }}
           code: 200
