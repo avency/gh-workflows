@@ -9,14 +9,6 @@ on:
       url:
         required: true
         type: string
-      username:
-        required: false
-        type: string
-        default: ""
-      password:
-        required: false
-        type: string
-        default: ""
     secrets:
       HOST:
         required: true
@@ -24,7 +16,10 @@ on:
         required: true
       AVENCY_SSH_KEY:
         required: true
-
+      BASIC_AUTH_USERNAME:
+        required: false
+      BASIC_AUTH_PASSWORD:
+        required: false
 jobs:
   init:
     runs-on: ubuntu-latest
@@ -37,8 +32,8 @@ jobs:
           code: 200
           timeout: 60
           interval: 10
-          username: ${{ inputs.username }}
-          password: ${{ inputs.password }}
+          username: ${{ secrets.BASIC_AUTH_USERNAME }}
+          password: ${{ secrets.BASIC_AUTH_PASSWORD }}
           
       - name: Clear cache and warmup cache
         uses: appleboy/ssh-action@c732d38392bd59adadcb5e688fb1f7f1d29c6951
