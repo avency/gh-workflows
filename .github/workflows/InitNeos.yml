@@ -9,6 +9,18 @@ on:
       url:
         required: true
         type: string
+      exec_clear_cache_warmup:
+        default: true
+        required: false
+        type: boolean
+      exec_migrate_database:
+        default: true
+        required: false
+        type: boolean
+      exec_publish_resource:
+        default: true
+        required: false
+        type: boolean
     secrets:
       HOST:
         required: true
@@ -36,6 +48,7 @@ jobs:
           password: ${{ secrets.BASIC_AUTH_PASSWORD }}
           
       - name: Clear cache and warmup cache
+        if: ${{ inputs.exec_clear_cache_warmup }}
         uses: appleboy/ssh-action@c732d38392bd59adadcb5e688fb1f7f1d29c6951
         with:
           host: ${{ secrets.HOST }}
@@ -51,6 +64,7 @@ jobs:
             fi
             
       - name: Migrate database
+        if: ${{ inputs.exec_migrate_database }}
         uses: appleboy/ssh-action@c732d38392bd59adadcb5e688fb1f7f1d29c6951
         with:
           host: ${{ secrets.HOST }}
@@ -65,6 +79,7 @@ jobs:
                exit 1
             fi
       - name: Publish resources
+        if: ${{ inputs.exec_publish_resource }}
         uses: appleboy/ssh-action@c732d38392bd59adadcb5e688fb1f7f1d29c6951
         with:
           host: ${{ secrets.HOST }}
