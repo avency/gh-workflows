@@ -25,6 +25,14 @@ on:
         default: false
         required: false
         type: boolean
+      exec_elasticsearch_index:
+        default: false
+        required: false
+        type: boolean
+      exec_elasticsearch_queue:
+        default: false
+        required: false
+        type: boolean
     secrets:
       HOST:
         required: true
@@ -108,6 +116,36 @@ jobs:
           script: |
             phpContainerID=$(docker ps -aqf "name=${{ inputs.containername }}")
             docker exec $phpContainerID su -c "/data/flow commandmigration:migrate" -s /bin/sh www-data
+            if [ $? != 0 ]
+            then
+               exit 1
+            fi
+      - name: Build Elasticsearch Index (Classic)
+        if: ${{ inputs.exec_elasticsearch_index }}
+        uses: appleboy/ssh-action@c732d38392bd59adadcb5e688fb1f7f1d29c6951
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.AVENCY_SSH_KEY }}
+          timeout: 120s
+          script: |
+            phpContainerID=$(docker ps -aqf "name=${{ inputs.containername }}")
+            docker exec $phpContainerID su -c "/data/flow nodeindex:build --workspace live" -s /bin/sh www-data
+            if [ $? != 0 ]
+            then
+               exit 1
+            fi
+      - name: Build Elasticsearch Index (Queue)
+        if: ${{ inputs.exec_elasticsearch_queue }}
+        uses: appleboy/ssh-action@c732d38392bd59adadcb5e688fb1f7f1d29c6951
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.AVENCY_SSH_KEY }}
+          timeout: 120s
+          script: |
+            phpContainerID=$(docker ps -aqf "name=${{ inputs.containername }}")
+            docker exec $phpContainerID su -c "/data/flow nodeindexqueue:build --workspace live" -s /bin/sh www-data
             if [ $? != 0 ]
             then
                exit 1
