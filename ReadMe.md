@@ -21,6 +21,7 @@ jobs:
       exec_clear_cache_warmup: true
       exec_migrate_database: true
       exec_publish_resource: true
+      exec_command_migration: false
     secrets:
       host: ${{ secrets.HOST }}
       username: ${{ secrets.USERNAME }}
@@ -50,3 +51,7 @@ Executes all doctrine migrations.
 #### exec_publish_resource
 
 Publishes the static resources.
+
+#### exec_command_migration
+
+Executes pending command migrations. [Requires additional Package](https://github.com/swisscomeventandmedia/Swisscom.CommandMigration)
