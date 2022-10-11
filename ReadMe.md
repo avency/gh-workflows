@@ -22,6 +22,8 @@ jobs:
       exec_migrate_database: true
       exec_publish_resource: true
       exec_command_migration: false
+      exec_elasticsearch_index: false
+      exec_elasticsearch_queue: false
     secrets:
       host: ${{ secrets.HOST }}
       username: ${{ secrets.USERNAME }}
@@ -55,3 +57,11 @@ Publishes the static resources.
 #### exec_command_migration
 
 Executes pending command migrations. [Requires additional Package](https://github.com/swisscomeventandmedia/Swisscom.CommandMigration)
+
+#### exec_elasticsearch_index
+
+Builds an ElasticSearch Index. Can not be used with `exec_elasticsearch_queue`. [Requires additional Package](https://github.com/Flowpack/Flowpack.ElasticSearch.ContentRepositoryAdaptor)
+
+#### exec_elasticsearch_queue
+
+Builds an Elasticsearch Queue Index. Can not be used with `exec_elasticsearch_index`. [Requires additional Package](https://github.com/Flowpack/Flowpack.ElasticSearch.ContentRepositoryQueueIndexer)
