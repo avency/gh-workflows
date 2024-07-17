@@ -1,0 +1,169 @@
+name: InitNeos
+
+on:
+  workflow_call:
+    inputs:
+      compose_folder:
+        required: true
+        type: string
+      compose_service_name:
+        required: true
+        type: string
+      compose_service_user:
+        required: false
+        type: string
+        default: 'www-data'
+      url:
+        required: true
+        type: string
+      exec_clear_cache_warmup:
+        default: true
+        required: false
+        type: boolean
+      exec_migrate_database:
+        default: true
+        required: false
+        type: boolean
+      exec_publish_resource:
+        default: true
+        required: false
+        type: boolean
+      exec_command_migration:
+        default: false
+        required: false
+        type: boolean
+      exec_elasticsearch_index:
+        default: false
+        required: false
+        type: boolean
+      exec_elasticsearch_queue:
+        default: false
+        required: false
+        type: boolean
+    secrets:
+      HOST:
+        required: true
+      SSH_USERNAME:
+        required: true
+      SSH_KEY:
+        required: true
+      BASIC_AUTH_USERNAME:
+        required: false
+      BASIC_AUTH_PASSWORD:
+        required: false
+jobs:
+  init:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check HTTP status
+        uses: gerdemann/http-status-code@main
+        with:
+          url: ${{ inputs.url }}
+          code: 200
+          timeout: 60
+          interval: 10
+          username: ${{ secrets.BASIC_AUTH_USERNAME }}
+          password: ${{ secrets.BASIC_AUTH_PASSWORD }}
+
+      - name: Clear cache and warmup cache
+        if: ${{ inputs.exec_clear_cache_warmup }}
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          timeout: "60s"
+          script: |
+            cd ${{ inputs.compose_folder }}/
+            docker compose exec -u ${{ inputs.compose_service_user }} ${{ inputs.compose_service_name }}  sh -c "/data/flow flow:cache:flush && /data/flow flow:cache:warmup"
+            if [ $? != 0 ]
+            then
+               exit 1
+            fi
+
+      - name: Migrate database
+        if: ${{ inputs.exec_migrate_database }}
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          timeout: "60s"
+          script: |
+            cd ${{ inputs.compose_folder }}/
+            docker compose exec -u ${{ inputs.compose_service_user }} ${{ inputs.compose_service_name }} sh -c "/data/flow doctrine:migrate"
+            if [ $? != 0 ]
+            then
+               exit 1
+            fi
+
+      - name: Publish resources
+        if: ${{ inputs.exec_publish_resource }}
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          timeout: 120s
+          script: |
+            cd ${{ inputs.compose_folder }}/
+            docker compose exec -u ${{ inputs.compose_service_user }} ${{ inputs.compose_service_name }} sh -c "/data/flow flow:resource:publish --collection static"
+            if [ $? != 0 ]
+            then
+               exit 1
+            fi
+
+      - name: Execute Command Migrations
+        if: ${{ inputs.exec_command_migration }}
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          timeout: 120s
+          script: |
+            cd ${{ inputs.compose_folder }}/
+            docker compose exec -u ${{ inputs.compose_service_user }} ${{ inputs.compose_service_name }} sh -c "/data/flow commandmigration:migrate"
+            if [ $? != 0 ]
+            then
+               exit 1
+            fi
+
+      - name: Build Elasticsearch Index (Classic)
+        if: ${{ inputs.exec_elasticsearch_index }}
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          timeout: 120s
+          script: |
+            cd ${{ inputs.compose_folder }}/
+            docker compose exec -u ${{ inputs.compose_service_user }} ${{ inputs.compose_service_name }} sh -c "/data/flow nodeindex:build --workspace live"
+            if [ $? != 0 ]
+            then
+               exit 1
+            fi
+
+      - name: Build Elasticsearch Index (Queue)
+        if: ${{ inputs.exec_elasticsearch_queue }}
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          timeout: 120s
+          script: |
+            cd ${{ inputs.compose_folder }}/
+            docker compose exec -u ${{ inputs.compose_service_user }} ${{ inputs.compose_service_name }} sh -c "/data/flow nodeindexqueue:build --workspace live"
+            if [ $? != 0 ]
+            then
+               exit 1
+            fi
