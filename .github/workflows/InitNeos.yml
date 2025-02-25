@@ -9,6 +9,10 @@ on:
       url:
         required: true
         type: string
+      do_http_check:
+        default: true
+        required: false
+        type: boolean
       exec_clear_cache_warmup:
         default: true
         required: false
@@ -50,6 +54,7 @@ jobs:
 
     steps:
       - name: Check HTTP status
+        if: ${{ inputs.do_http_check }}
         uses: gerdemann/http-status-code@main
         with:
           url: ${{ inputs.url }}
