@@ -20,6 +20,7 @@ jobs:
     with:
       containername: ${{ secrets.CONTAINERNAME }}
       url: https://${{ secrets.PROJECT_DOMAIN_LIVE }}/
+      do_http_check: true
       exec_clear_cache_warmup: true
       exec_migrate_database: true
       exec_publish_resource: true
@@ -38,7 +39,7 @@ jobs:
 
 The name of the appropriate container in which the commands should be executed.
 
-#### InitNeos (Docker Composer)
+#### InitNeos (Docker Compose)
 
 ```yaml
 # .github/workflows/deploy-to-live.yml
@@ -54,6 +55,7 @@ jobs:
       compose_service_name: php
       compose_service_user: www-data
       url: https://${{ secrets.PROJECT_DOMAIN_LIVE }}/
+      do_http_check: true
       exec_clear_cache_warmup: true
       exec_migrate_database: true
       exec_publish_resource: true
@@ -90,6 +92,10 @@ The inputs are defined under `jobs.init.with`.
 #### url
 
 The url with which the project can be accessed
+
+#### do_http_check
+
+If set to true (default), the url will be checked if the response code is 200.
 
 #### exec_clear_cache_warmup
 
