@@ -167,6 +167,12 @@ jobs:
           timeout: 120s
           script: |
             cd ${{ inputs.compose_folder }}/
+            docker compose exec -u ${{ inputs.compose_service_user }} ${{ inputs.compose_service_name }} sh -c "/data/flow nodeindexqueue:flush"
+            if [ $? != 0 ]
+            then
+               exit 1
+            fi
+
             docker compose exec -u ${{ inputs.compose_service_user }} ${{ inputs.compose_service_name }} sh -c "/data/flow nodeindexqueue:build --workspace live"
             if [ $? != 0 ]
             then
