@@ -150,6 +150,12 @@ jobs:
           timeout: 120s
           script: |
             phpContainerID=$(docker ps -aqf "name=${{ inputs.containername }}")
+            docker exec $phpContainerID su -c "/data/flow nodeindexqueue:flush" -s /bin/sh www-data
+            if [ $? != 0 ]
+            then
+               exit 1
+            fi
+
             docker exec $phpContainerID su -c "/data/flow nodeindexqueue:build --workspace live" -s /bin/sh www-data
             if [ $? != 0 ]
             then

@@ -119,7 +119,7 @@ Builds an ElasticSearch Index. Can not be used with `exec_elasticsearch_queue`. 
 
 #### exec_elasticsearch_queue
 
-Builds an Elasticsearch Queue Index. Can not be used with `exec_elasticsearch_index`. [Requires additional Package](https://github.com/Flowpack/Flowpack.ElasticSearch.ContentRepositoryQueueIndexer)
+Builds an Elasticsearch Queue Index. Can not be used with `exec_elasticsearch_index`. Flushes the queue before execution to prevent failures. [Requires additional Package](https://github.com/Flowpack/Flowpack.ElasticSearch.ContentRepositoryQueueIndexer)
 
 ### Secrets
 
