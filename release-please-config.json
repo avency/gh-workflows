@@ -1,0 +1,18 @@
+{
+    "packages": {
+      ".": {
+        "release-type": "simple",
+        "include-v-in-tag": false,
+        "draft": false,
+        "prerelease": false,
+        "bumpMinorPreMajor": false,
+        "bumpPatchForMinorPreMajor": false,
+        "changelogPath": "CHANGELOG.md",
+        "versioning": "default",
+        "extra-files": [
+          ".github/workflows/deploy-neos.yml",
+          "ReadMe.md"
+        ]
+      }
+    }
+  }
