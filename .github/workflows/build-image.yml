@@ -1,0 +1,109 @@
+name: Build Docker Image
+
+on:
+  workflow_call:
+    inputs:
+      docker-registry:
+        type: string
+        required: true
+      docker-image-owner:
+        type: string
+        required: true
+      docker-image-name:
+        type: string
+        required: true
+      image-is-latest:
+        type: boolean
+        required: false
+        default: false
+      build-context:
+        type: string
+        required: false
+        default: .
+      build-dockerfile:
+        type: string
+        required: false
+        default: Dockerfile
+      vulnerability-scan-run:
+        type: boolean
+        default: true
+      vulnerability-scan-threshold:
+        type: string
+        default: CRITICAL
+    secrets:
+      REGISTRY_USERNAME:
+        required: true
+        description: "Docker registry username"
+      REGISTRY_PASSWORD:
+        required: true
+        description: "Docker registry password"
+      BUILD_SECRETS:
+        required: false
+        description: "Build secrets to be used during build"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Log into github registry ${{ inputs.docker-registry }}
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
+        with:
+          registry: ${{ inputs.docker-registry }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Setup Docker buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf
+        with:
+          images: ${{ inputs.docker-registry }}/${{ inputs.docker-image-owner }}/${{ inputs.docker-image-name }}
+          flavor: |
+            latest=${{ inputs.image-is-latest }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=sha,format=short,prefix=sha-
+
+      - name: Build Docker Image
+        id: build
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294
+        with:
+          context: ${{ inputs.build-context }}
+          file: ${{ inputs.build-dockerfile }}
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          secrets: ${{ secrets.BUILD_SECRETS }}
+
+      - name: Scan for vulnerabilities
+        if: ${{ inputs.vulnerability-scan-run }}
+        uses: crazy-max/ghaction-container-scan@v4
+        with:
+          image: ${{ inputs.docker-registry }}/${{ inputs.docker-image-owner }}/${{ inputs.docker-image-name }}
+          dockerfile: ${{ inputs.build-context }}/${{ inputs.build-dockerfile }}
+          annotations: true
+          severity_threshold: ${{ inputs.vulnerability-scan-threshold }}
+        env:
+          TRIVY_TIMEOUT: 10m
+          TRIVY_SCANNERS: 'vuln'
+
+      - name: Push Docker Image to Docker Hub
+        id: push
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294
+        with:
+          context: ${{ inputs.build-context }}
+          file: ${{ inputs.build-dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          sbom: false
+          provenance: false
