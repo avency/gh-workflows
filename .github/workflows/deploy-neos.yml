@@ -136,7 +136,7 @@ jobs:
     needs: [maintenance-after-deploy]
     name: Initialize Neos
     # x-release-please-start-version
-    uses: avency/gh-workflows/.github/workflows/init-neos.yml@1.4.0
+    uses: avency/gh-workflows/.github/workflows/init-neos.yml@2.0.0
     # x-release-please-end
     with:
       environment: ${{ inputs.environment }}
