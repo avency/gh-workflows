@@ -1,0 +1,50 @@
+name: Neos Command Migration
+description: Run command migrations for a Neos/Flow instance
+
+inputs:
+  # compose
+  compose-service-name:
+    description: "Name of the compose service to use"
+    required: false
+    default: 'php'
+  compose-service-user:
+    description: "User of the compose service to use"
+    required: false
+    default: 'www-data'
+  deployment-compose-target:
+    description: "Target path on the remote server"
+    required: true
+
+  # ssh
+  SSH_HOST:
+    description: 'SSH Host'
+    required: true
+  SSH_PORT:
+    description: 'SSH Port'
+    required: false
+    default: '22'
+  SSH_USERNAME:
+    description: 'SSH Username'
+    required: true
+  SSH_KEY:
+    description: 'SSH Key'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Clear cache and warmup cache
+      uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2
+      with:
+        host: ${{ inputs.SSH_HOST }}
+        username: ${{ inputs.SSH_USERNAME }}
+        key: ${{ inputs.SSH_KEY }}
+        port: ${{ inputs.SSH_PORT }}
+        timeout: "60s"
+        script: |
+          cd ${{ inputs.deployment-compose-target }}/
+          docker compose exec -u ${{ inputs.compose-service-user }} ${{ inputs.compose-service-name }} sh -c "/data/flow commandmigration:migrate"
+          if [ $? != 0 ]
+          then
+              exit 1
+          fi

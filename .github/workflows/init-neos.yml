@@ -1,20 +1,46 @@
 name: Initialize Neos
-run-name: Initialize Neos for ${{ inputs.environment }}
 
 on:
   workflow_call:
     inputs:
-      environment:
+      deployment-compose-target:
+        description: "Target path on the remote server"
+        type: string
         required: true
+      domain:
+        description: "Domain to check for HTTP status"
         type: string
-      compose-service-name:
+        required: true
+      deploy-do-http-check:
+        description: "Run an HTTP check for status code `200` before initialization and after deployment (requires `domain`)"
+        type: boolean
+        default: true
         required: false
-        type: string
-        default: 'php'
-      compose-service-user:
+      deploy-exec-clear-cache-warmup:
+        description: "Clear and warm up the cache"
+        type: boolean
+        default: true
         required: false
+      deploy-exec-migrate-database:
+        description: "Run database migrations"
+        type: boolean
+        default: true
+        required: false
+      deploy-exec-publish-resource:
+        description: "Publish all static resources"
+        type: boolean
+        default: true
+        required: false
+      deploy-exec-command-migration:
+        description: "Run command migrations"
+        type: boolean
+        default: false
+        required: false
+      deploy-exec-elasticsearch-index:
+        description: "Which Elasticsearch index operation to run: 'false' (none), 'classic', or 'queue'"
         type: string
-        default: 'www-data'
+        default: 'false'
+        required: false
     secrets:
       SSH_HOST:
         required: true
@@ -24,138 +50,71 @@ on:
         required: true
       SSH_KEY:
         required: true
+
 jobs:
   init:
-    environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check HTTP status with httpcheck.sh
-        if: ${{ vars.DOMAIN != '' && vars.DEPLOY_DO_HTTP_CHECK == 'true' }}
-        uses: appleboy/ssh-action@v1.2.5
+      - name: Local http check
+        if: ${{ inputs.deploy-do-http-check }}
+        uses: avency/gh-workflows/.github/actions/local-http-check@v2
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          timeout: "300s"
-          script: |
-            cd ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}/
-            if [ -f ./httpcheck.sh ]; then
-              chmod u+x ./httpcheck.sh
-              ./httpcheck.sh --url=${{ vars.DOMAIN }} --interval=10
-              if [ $? != 0 ]
-              then
-                 exit 1
-              fi
-            else
-              echo "WARN: httpcheck.sh does not exist, skipping HTTP check. Please add it to the target directory."
-            fi
+          deployment-compose-target: ${{ inputs.deployment-compose-target }}
+          domain: ${{ inputs.domain }}
+          basic-auth-username: ${{ secrets.BASIC_AUTH_USERNAME }}
+          basic-auth-password: ${{ secrets.BASIC_AUTH_PASSWORD }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
 
-      - name: Clear cache and warmup cache
-        if: ${{ vars.DEPLOY_EXEC_CLEAR_CACHE_WARMUP == 'true' }}
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2
+      - name: Clear Cache
+        if: ${{ inputs.deploy-exec-clear-cache-warmup }}
+        uses: avency/gh-workflows/.github/actions/neos-clear-cache@v2
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          timeout: "60s"
-          script: |
-            cd ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}/
-            docker compose exec -u ${{ inputs.compose-service-user }} ${{ inputs.compose-service-name }}  sh -c "/data/flow flow:cache:flush && /data/flow flow:cache:warmup"
-            if [ $? != 0 ]
-            then
-               exit 1
-            fi
+          deployment-compose-target: ${{ inputs.deployment-compose-target }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
 
-      - name: Migrate database
-        if: ${{ vars.DEPLOY_EXEC_MIGRATE_DATABASE == 'true' }}
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2
+      - name: Migrate Database
+        if: ${{ inputs.deploy-exec-migrate-database }}
+        uses: avency/gh-workflows/.github/actions/neos-migrate-database@v2
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          timeout: "60s"
-          script: |
-            cd ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}/
-            docker compose exec -u ${{ inputs.compose-service-user }} ${{ inputs.compose-service-name }} sh -c "/data/flow doctrine:migrate"
-            if [ $? != 0 ]
-            then
-               exit 1
-            fi
+          deployment-compose-target: ${{ inputs.deployment-compose-target }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
 
-      - name: Publish resources
-        if: ${{ vars.DEPLOY_EXEC_PUBLISH_RESOURCE == 'true' }}
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2
+      - name: Publish Static Resources
+        if: ${{ inputs.deploy-exec-publish-resource }}
+        uses: avency/gh-workflows/.github/actions/neos-publish-resources@v2
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          timeout: 120s
-          script: |
-            cd ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}/
-            docker compose exec -u ${{ inputs.compose-service-user }} ${{ inputs.compose-service-name }} sh -c "/data/flow flow:resource:publish --collection static"
-            if [ $? != 0 ]
-            then
-               exit 1
-            fi
+          deployment-compose-target: ${{ inputs.deployment-compose-target }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
 
-      - name: Execute Command Migrations
-        if: ${{ vars.DEPLOY_EXEC_COMMAND_MIGRATION == 'true' }}
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2
+      - name: Command Migration
+        if: ${{ inputs.deploy-exec-command-migration }}
+        uses: avency/gh-workflows/.github/actions/neos-command-migration@v2
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          timeout: 120s
-          script: |
-            cd ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}/
-            docker compose exec -u ${{ inputs.compose-service-user }} ${{ inputs.compose-service-name }} sh -c "/data/flow commandmigration:migrate"
-            if [ $? != 0 ]
-            then
-               exit 1
-            fi
+          deployment-compose-target: ${{ inputs.deployment-compose-target }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
 
-      - name: Build Elasticsearch Index (Classic)
-        if: ${{ vars.DEPLOY_EXEC_ELASTICSEARCH_INDEX == 'true' }}
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2
+      - name: Build Elasticsearch Index
+        if: ${{ inputs.deploy-exec-elasticsearch-index == 'classic' || inputs.deploy-exec-elasticsearch-index == 'queue' }}
+        uses: avency/gh-workflows/.github/actions/neos-elasticsearch-index@v2
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          timeout: 120s
-          script: |
-            cd ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}/
-            docker compose exec -u ${{ inputs.compose-service-user }} ${{ inputs.compose-service-name }} sh -c "/data/flow nodeindex:build --workspace live"
-            if [ $? != 0 ]
-            then
-               exit 1
-            fi
-
-      - name: Build Elasticsearch Index (Queue)
-        if: ${{ vars.DEPLOY_EXEC_ELASTICSEARCH_QUEUE == 'true' }}
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          timeout: 120s
-          script: |
-            cd ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}/
-            docker compose exec -u ${{ inputs.compose-service-user }} ${{ inputs.compose-service-name }} sh -c "/data/flow nodeindexqueue:flush"
-            if [ $? != 0 ]
-            then
-               exit 1
-            fi
-
-            docker compose exec -u ${{ inputs.compose-service-user }} ${{ inputs.compose-service-name }} sh -c "/data/flow nodeindexqueue:build --workspace live"
-            if [ $? != 0 ]
-            then
-               exit 1
-            fi
+          deployment-compose-target: ${{ inputs.deployment-compose-target }}
+          index-type: ${{ inputs.deploy-exec-elasticsearch-index }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}

@@ -1,0 +1,57 @@
+name: Local HTTP Check
+description: Check the HTTP status of a local server
+
+inputs:
+  deployment-compose-target:
+    description: "Target path on the remote server"
+    required: true
+  domain:
+    description: "Domain to check for HTTP status"
+    required: true
+  basic-auth-username:
+    description: "Basic Authentication Username"
+    required: false
+    default: ''
+  basic-auth-password:
+    description: "Basic Authentication Password"
+    required: false
+    default: ''
+
+  # ssh
+  SSH_HOST:
+    description: 'SSH Host'
+    required: true
+  SSH_PORT:
+    description: 'SSH Port'
+    required: false
+    default: '22'
+  SSH_USERNAME:
+    description: 'SSH Username'
+    required: true
+  SSH_KEY:
+    description: 'SSH Key'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Check HTTP status with httpcheck.sh
+      uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2
+      with:
+        host: ${{ inputs.SSH_HOST }}
+        username: ${{ inputs.SSH_USERNAME }}
+        key: ${{ inputs.SSH_KEY }}
+        port: ${{ inputs.SSH_PORT }}
+        timeout: "60s"
+        script: |
+          cd ${{ inputs.deployment-compose-target }}/
+          if [ -f ./httpcheck.sh ]; then
+            chmod u+x ./httpcheck.sh
+            ./httpcheck.sh --url=${{ inputs.domain }} --interval=10 --username=${{ inputs.basic-auth-username }} --password=${{ inputs.basic-auth-password }}
+            if [ $? != 0 ]
+            then
+                exit 1
+            fi
+          else
+            echo "WARN: httpcheck.sh does not exist, skipping HTTP check. Please add it to the target directory."
+          fi

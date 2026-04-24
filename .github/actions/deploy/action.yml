@@ -1,0 +1,122 @@
+name: Deploy
+description: Deploy a Composer project with docker compose
+
+inputs:
+  # docker
+  version:
+    description: "Version or tag of the docker image to use"
+    required: true
+  ref-type:
+    description: "Git ref type: 'tag' or 'branch'. If provided, VERSION override runs only for branches."
+    required: false
+
+  # compose
+  deployment-compose-source:
+    description: "Source path on the local machine"
+    required: true
+  deployment-compose-target:
+    description: "Target path on the remote server"
+    required: true
+  env-filename:
+    description: "Name of the .env file to symlink"
+    required: false
+    default: ''
+
+  # ssh
+  SSH_HOST:
+    description: 'SSH Host'
+    required: true
+  SSH_PORT:
+    description: 'SSH Port'
+    required: false
+    default: '22'
+  SSH_USERNAME:
+    description: 'SSH Username'
+    required: true
+  SSH_KEY:
+    description: 'SSH Key'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6
+
+    - name: Copy deployment files to host
+      uses: burnett01/rsync-deployments@8.0.4
+      with:
+        switches: "-avzr --delete"
+        remote_host: ${{ inputs.SSH_HOST }}
+        remote_port: ${{ inputs.SSH_PORT }}
+        remote_user: ${{ inputs.SSH_USERNAME }}
+        remote_key: ${{ inputs.SSH_KEY }}
+        remote_path: ${{ inputs.deployment-compose-target }}
+        path: ${{ inputs.deployment-compose-source }}
+
+    - name: Symlink .env file
+      uses: appleboy/ssh-action@v1.2.5
+      if: ${{ inputs.env-filename != '' }}
+      with:
+        host: ${{ inputs.SSH_HOST }}
+        username: ${{ inputs.SSH_USERNAME }}
+        key: ${{ inputs.SSH_KEY }}
+        port: ${{ inputs.SSH_PORT }}
+        script: |
+          cd ${{ inputs.deployment-compose-target }}/
+          ln -sfn ${{ inputs.env-filename }} .env
+
+    - name: 'Upgrade 1: Override the VERSION variable with the branch name'
+      # Run for branches (or when ref-type not set). Skip for tags so .env VERSION is not overwritten.
+      if: ${{ inputs.ref-type != 'tag' }}
+      uses: appleboy/ssh-action@v1.2.5
+      with:
+        host: ${{ inputs.SSH_HOST }}
+        username: ${{ inputs.SSH_USERNAME }}
+        key: ${{ inputs.SSH_KEY }}
+        port: ${{ inputs.SSH_PORT }}
+        timeout: "600s"
+        script: |
+          if [ -z "${{ inputs.version }}" ]; then
+            echo "Error: 'version' input is required but was not provided."
+            exit 1
+          fi
+          cd ${{ inputs.deployment-compose-target }}/
+          sed -i "s/^VERSION=.*/VERSION=${{ inputs.version }}/" .env
+
+    - name: 'Upgrade 2: Pull Images and stop containers'
+      uses: appleboy/ssh-action@v1.2.5
+      with:
+        host: ${{ inputs.SSH_HOST }}
+        username: ${{ inputs.SSH_USERNAME }}
+        key: ${{ inputs.SSH_KEY }}
+        port: ${{ inputs.SSH_PORT }}
+        timeout: "600s"
+        script: |
+          cd ${{ inputs.deployment-compose-target }}/
+          docker compose pull
+
+    - name: 'Upgrade 3: Stop containers'
+      uses: appleboy/ssh-action@v1.2.5
+      with:
+        host: ${{ inputs.SSH_HOST }}
+        username: ${{ inputs.SSH_USERNAME }}
+        key: ${{ inputs.SSH_KEY }}
+        port: ${{ inputs.SSH_PORT }}
+        timeout: "600s"
+        script: |
+          cd ${{ inputs.deployment-compose-target }}/
+          docker compose down -v
+
+    - name: 'Upgrade 4: Start containers'
+      uses: appleboy/ssh-action@v1.2.5
+      with:
+        host: ${{ inputs.SSH_HOST }}
+        username: ${{ inputs.SSH_USERNAME }}
+        key: ${{ inputs.SSH_KEY }}
+        port: ${{ inputs.SSH_PORT }}
+        timeout: "600s"
+        script: |
+          cd ${{ inputs.deployment-compose-target }}/
+          docker compose up -d --force-recreate redis
+          docker compose up -d --remove-orphans
