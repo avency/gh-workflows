@@ -3,7 +3,9 @@
 These workflows require separate GitHub environments for each deployment target.
 Using environments allows values to be clearly separated or reused through default values.
 
-## Usage
+## Usage of reusable Workflows
+
+If you want to use the reusable workflows, you have to setup some variables and secrets. You can also use them as a template since the workflows just calling custom actions.
 
 ### Environments
 
@@ -52,14 +54,12 @@ run-name: Building images for version ${{ github.ref_name }} by @${{ github.acto
 
 on:
   push:
-    tags: ['*.*.*'] # build image after a tag
-  workflow_dispatch: # allow manual build of a docker image
+    tags: ['*.*.*']
+  workflow_dispatch:
 
 jobs:
   php:
-    # x-release-please-start-version
-    uses: avency/gh-workflows/.github/workflows/build-image.yml@1.4.0
-    # x-release-please-end
+    uses: avency/gh-workflows/.github/workflows/build-image.yml@v2
     permissions:
       contents: read
       packages: write
@@ -82,13 +82,22 @@ jobs:
 ### Deploy and initialize Neos Project
 
 ```yaml
-name: Deploy to Testing
-run-name: Deploy ${{ github.ref_name }} to Testing by @${{ github.actor }}
+name: Deploy
+run-name: Deploy ${{ github.ref_name }} by @${{ github.actor }}
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy to"
+        required: true
+        type: choice
+        options:
+          - testing
+          - staging
+          - production
 
-concurrency: deploy_to_testing
+concurrency: deploy_to
 
 jobs:
   prepare:
@@ -102,11 +111,9 @@ jobs:
 
   deploy:
     needs: [prepare]
-    # x-release-please-start-version
-    uses: avency/gh-workflows/.github/workflows/deploy-neos.yml@1.4.0
-    # x-release-please-end
+    uses: avency/gh-workflows/.github/workflows/deploy-neos.yml@v2
     with:
-      environment: 'testing' # replace with the name of the environment
+      environment: ${{ inputs.environment }}
       version: ${{ github.ref_type == 'tag' && github.ref_name || needs.prepare.outputs.short_sha }}
       ref-type: ${{ github.ref_type }}
     secrets:
@@ -114,5 +121,56 @@ jobs:
       SSH_PORT: ${{ secrets.SSH_PORT }}
       SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
       SSH_KEY: ${{ secrets.SSH_KEY }}
-      SSH_PORT: ${{ secrets.SSH_PORT }}
+      BASIC_AUTH_USERNAME: ${{ secrets.BASIC_AUTH_USERNAME }}
+      BASIC_AUTH_PASSWORD: ${{ secrets.BASIC_AUTH_PASSWORD }}
 ```
+
+## Actions
+
+### deploy
+
+Deploy a Compose Project and rebuild the containers.
+
+[Read more](./.github/actions/deploy/ReadMe.md)
+
+### local-http-check
+
+Check the HTTP Status through the server itself.
+
+[Read more](./.github/actions/local-http-check/ReadMe.md)
+
+### maintenance
+
+Enable/Disable Maintenance
+
+[Read more](./.github/actions/maintenance/ReadMe.md)
+
+### neos-clear-cache
+
+Clear and warm up the Neos Flow Cache 
+
+[Read more](./.github/actions/neos-clear-cache/ReadMe.md)
+
+### neos-migrate-database
+
+Neos Migrate Database
+
+[Read more](./.github/actions/neos-migrate-database/ReadMe.md)
+
+### neos-publish-resources
+
+Publish all static resources for a Neos/Flow instance
+
+[Read more](./.github/actions/neos-publish-resources/ReadMe.md)
+
+### neos-command-migration
+
+Run Command Migrations
+
+[Read more](./.github/actions/neos-command-migration/ReadMe.md)
+
+### neos-elasticsearch-index
+
+Build the elasticsearch index with the default command or with the queue.
+
+[Read more](./.github/actions/neos-elasticsearch-index/ReadMe.md)

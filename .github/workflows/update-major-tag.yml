@@ -1,0 +1,43 @@
+name: Update Main Version
+run-name: Move ${{ github.event.inputs.major_version }} to ${{ github.event.inputs.target }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: The tag or reference to use
+        required: true
+      major_version:
+        type: choice
+        description: The major version to update
+        options:
+          - v2
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Generate token
+        uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          client-id: ${{ secrets.AVENCY_TOKEN_APP_ID }}
+          private-key: ${{ secrets.AVENCY_TOKEN_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+
+      - name: Git config
+        run: |
+          git config user.name "avency-action-token[bot]"
+          git config user.email "108450833+avency-action-token[bot]@users.noreply.github.com"
+
+      - name: Tag new target
+        run: git tag -f ${{ github.event.inputs.major_version }} ${{ github.event.inputs.target }}
+
+      - name: Push new tag
+        run: git push origin ${{ github.event.inputs.major_version }} --force

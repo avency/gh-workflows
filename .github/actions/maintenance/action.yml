@@ -1,0 +1,63 @@
+name: Enable/Disable Maintenance Mode
+description: Enable/Disable Maintenance Mode for a container
+
+inputs:
+  enable:
+    description: 'Enable or disable maintenance mode (true/false)'
+    required: true
+  container-name:
+    description: 'Name of the container to enable/disable maintenance mode'
+    required: true
+  deployment-compose-target:
+    description: "Target path on the remote server"
+    required: true
+  SSH_HOST:
+    description: 'SSH Host'
+    required: true
+  SSH_PORT:
+    description: 'SSH Port'
+    required: false
+    default: '22'
+  SSH_USERNAME:
+    description: 'SSH Username'
+    required: true
+  SSH_KEY:
+    description: 'SSH Key'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: set command
+      shell: bash
+      id: vars
+      run: |
+        if [ ${{ inputs.enable }} = 'true' ]; then
+          echo "act_command="maintenance 1" >> $GITHUB_OUTPUT"
+          echo "act_warn_message="Could not enable maintenance mode!" >> $GITHUB_OUTPUT"
+        else
+          echo "act_command="maintenance 0" >> $GITHUB_OUTPUT"
+          echo "act_warn_message="Could not disable maintenance mode!" >> $GITHUB_OUTPUT"
+        fi
+
+    - name: 'Enable/Disable maintenance mode'
+      uses: appleboy/ssh-action@v1.2.5
+      with:
+        host: ${{ inputs.SSH_HOST }}
+        username: ${{ inputs.SSH_USERNAME }}
+        key: ${{ inputs.SSH_KEY }}
+        port: ${{ inputs.SSH_PORT }}
+        timeout: "30s"
+        script: |
+          cd ${{ inputs.deployment-compose-target }}/
+          # Check if container is running before running maintenance command
+          if docker compose ps --status=running ${{ inputs.container-name }} | grep -q '${{ inputs.container-name }}'; then
+            docker compose exec ${{ inputs.container-name }} sh -c '${{ steps.vars.outputs.act_command }}'
+            if [ $? != 0 ]
+            then
+              echo "WARN: ${{ steps.vars.outputs.act_warn_message }}"
+              echo "WARN: Proceeding with deployment..."
+            fi
+          else
+            echo "${{ inputs.container-name }} container is not running, skipping maintenance command"
+          fi

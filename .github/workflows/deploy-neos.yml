@@ -1,19 +1,21 @@
 name: Deploy Neos Compose Project
-run-name: Deploy ${{ inputs.environment }}
+run-name: Deploy ${{ inputs.version }} to ${{ inputs.environment }}
 
 on:
   workflow_call:
     inputs:
       environment:
-        required: true
+        description: "Target Environment"
         type: string
+        required: true
       version:
         required: true
         type: string
       ref-type:
-        required: false
-        type: string
         description: "Git ref type: 'tag' or 'branch'. If provided, VERSION override runs only for branches."
+        type: string
+        required: false
+        default: ''
     secrets:
       SSH_HOST:
         required: true
@@ -29,144 +31,135 @@ on:
         required: false
 
 jobs:
-  maintenance:
-    name: Enable maintenance mode
-    # x-release-please-start-version
-    uses: avency/gh-workflows/.github/workflows/deploy-maintenance.yml@1.4.0
-    # x-release-please-end
-    with:
-      environment: ${{ inputs.environment }}
-      container-name: nginx
-      enable: true
-    secrets:
-      SSH_HOST: ${{ secrets.SSH_HOST }}
-      SSH_PORT: ${{ secrets.SSH_PORT }}
-      SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
-      SSH_KEY: ${{ secrets.SSH_KEY }}
-
   deploy:
-    needs: [maintenance]
-    environment: ${{ inputs.environment }}
-    name: Deploy ${{ inputs.environment }}
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: Copy deployment files to host
-        uses: burnett01/rsync-deployments@8.0.4
+      - name: Enable maintenance
+        uses: avency/gh-workflows/.github/actions/maintenance@v2
         with:
-          switches: "-avzr --delete"
-          remote_host: ${{ secrets.SSH_HOST }}
-          remote_port: ${{ secrets.SSH_PORT }}
-          remote_user: ${{ secrets.SSH_USERNAME }}
-          remote_key: ${{ secrets.SSH_KEY }}
-          remote_path: ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}
-          path: ${{ vars.DEPLOYMENT_COMPOSE_SOURCE }}
+          enable: 'true'
+          container-name: nginx
+          deployment-compose-target: ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
 
-      - name: Symlink .env file
-        uses: appleboy/ssh-action@v1.2.5
-        if: ${{ vars.ENV_FILENAME != '' }}
+      - name: Deploy
+        uses: avency/gh-workflows/.github/actions/deploy@v2
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          script: |
-            cd ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}/
-            ln -sfn ${{ vars.ENV_FILENAME }} .env
+          version: ${{ inputs.version }}
+          ref-type: ${{ github.ref_type }}
+          deployment-compose-source: ${{ vars.DEPLOYMENT_COMPOSE_SOURCE }}
+          deployment-compose-target: ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}
+          env-filename: ${{ vars.ENV_FILENAME }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
 
-      - name: 'Upgrade 1: Override the VERSION variable with the branch name'
-        # Run for branches (or when ref-type not set). Skip for tags so .env VERSION is not overwritten.
-        if: inputs.ref-type != 'tag'
-        uses: appleboy/ssh-action@v1.2.5
+      - name: Re-Enable maintenance
+        uses: avency/gh-workflows/.github/actions/maintenance@v2
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          timeout: "600s"
-          script: |
-            cd ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}/
-            sed -i "s/^VERSION=.*/VERSION=${{ inputs.version }}/" .env
-
-      - name: 'Upgrade 2: Pull Images and stop containers'
-        uses: appleboy/ssh-action@v1.2.5
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          timeout: "600s"
-          script: |
-            cd ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}/
-            docker compose pull
-            docker compose down -v
-
-      - name: 'Upgrade 3: Start containers'
-        uses: appleboy/ssh-action@v1.2.5
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          timeout: "600s"
-          script: |
-            cd ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}/
-            docker compose up -d --force-recreate redis
-            docker compose up -d --remove-orphans
-
-  maintenance-after-deploy:
-    needs: [deploy]
-    name: Enable maintenance mode
-    # x-release-please-start-version
-    uses: avency/gh-workflows/.github/workflows/deploy-maintenance.yml@1.4.0
-    # x-release-please-end
-    with:
-      environment: ${{ inputs.environment }}
-      container-name: nginx
-      enable: true
-    secrets:
-      SSH_HOST: ${{ secrets.SSH_HOST }}
-      SSH_PORT: ${{ secrets.SSH_PORT }}
-      SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
-      SSH_KEY: ${{ secrets.SSH_KEY }}
+          enable: 'true'
+          container-name: nginx
+          deployment-compose-target: ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
 
   init:
-    needs: [maintenance-after-deploy]
-    name: Initialize Neos
-    # x-release-please-start-version
-    uses: avency/gh-workflows/.github/workflows/init-neos.yml@1.4.0
-    # x-release-please-end
-    with:
-      environment: ${{ inputs.environment }}
-    secrets:
-      SSH_HOST: ${{ secrets.SSH_HOST }}
-      SSH_PORT: ${{ secrets.SSH_PORT }}
-      SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
-      SSH_KEY: ${{ secrets.SSH_KEY }}
-
-  start-nginx:
-    needs: [init]
-    name: Recreate nginx
-    environment: ${{ inputs.environment }}
+    needs: [deploy]
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     steps:
-      - name: 'Recreate nginx'
-        uses: appleboy/ssh-action@v1.2.5
+      - name: Local http check
+        if: ${{ vars.DEPLOY_DO_HTTP_CHECK == 'true' }}
+        uses: avency/gh-workflows/.github/actions/local-http-check@v2
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          timeout: "60s"
-          script: |
-            cd ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}/
-            docker compose up -d --remove-orphans --force-recreate nginx
+          deployment-compose-target: ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}
+          domain: ${{ vars.DOMAIN }}
+          basic-auth-username: ${{ secrets.BASIC_AUTH_USERNAME }}
+          basic-auth-password: ${{ secrets.BASIC_AUTH_PASSWORD }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+
+      - name: Clear Cache
+        if: ${{ vars.DEPLOY_EXEC_CLEAR_CACHE_WARMUP == 'true' }}
+        uses: avency/gh-workflows/.github/actions/neos-clear-cache@v2
+        with:
+          deployment-compose-target: ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+
+      - name: Migrate Database
+        if: ${{ vars.DEPLOY_EXEC_MIGRATE_DATABASE == 'true' }}
+        uses: avency/gh-workflows/.github/actions/neos-migrate-database@v2
+        with:
+          deployment-compose-target: ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+
+      - name: Publish Static Resources
+        if: ${{ vars.DEPLOY_EXEC_PUBLISH_RESOURCE == 'true' }}
+        uses: avency/gh-workflows/.github/actions/neos-publish-resources@v2
+        with:
+          deployment-compose-target: ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+
+      - name: Command Migration
+        if: ${{ vars.DEPLOY_EXEC_COMMAND_MIGRATION == 'true' }}
+        uses: avency/gh-workflows/.github/actions/neos-command-migration@v2
+        with:
+          deployment-compose-target: ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+
+      - name: Build Elasticsearch Index
+        if: ${{ vars.DEPLOY_EXEC_ELASTICSEARCH_INDEX == 'classic' || vars.DEPLOY_EXEC_ELASTICSEARCH_INDEX == 'queue' }}
+        uses: avency/gh-workflows/.github/actions/neos-elasticsearch-index@v2
+        with:
+          deployment-compose-target: ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}
+          index-type: ${{ vars.DEPLOY_EXEC_ELASTICSEARCH_INDEX }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+
+  finish:
+    needs: [init]
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Disable maintenance
+        uses: avency/gh-workflows/.github/actions/maintenance@v2
+        with:
+          enable: 'false'
+          container-name: nginx
+          deployment-compose-target: ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
 
       - name: Check HTTP status
         if: ${{ vars.DOMAIN != '' && vars.DEPLOY_DO_HTTP_CHECK == 'true' }}
-        uses: gerdemann/http-status-code@main
+        uses: gerdemann/http-status-code@002e9e0a716f4af986d26fc4af4c0a671b3733fc
         with:
           url: ${{ vars.DOMAIN }}
           code: 200
