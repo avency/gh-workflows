@@ -88,7 +88,7 @@ jobs:
         if: ${{ inputs.vulnerability-scan-run }}
         uses: crazy-max/ghaction-container-scan@v4
         with:
-          image: ${{ inputs.docker-registry }}/${{ inputs.docker-image-owner }}/${{ inputs.docker-image-name }}
+          image: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
           dockerfile: ${{ inputs.build-context }}/${{ inputs.build-dockerfile }}
           annotations: true
           severity_threshold: ${{ inputs.vulnerability-scan-threshold }}
