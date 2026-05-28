@@ -26,6 +26,7 @@ jobs:
           deployment-compose-target: ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}
           deployment-environment-env-filename: ${{ vars.ENV_FILENAME }} # => .foo-project.env
           # deployment-compose-do-upgrade: true
+          # deployment-force-recreate-containers: ${{ vars.DEPLOYMENT_COMPOSE_FORCE_RECREATE_CONTAINERS }}
           # backup-do-backup: ${{ vars.DEPLOYMENT_COMPOSE_DO_BACKUP }}
           # backup-target-folder: ${{ vars.DEPLOYMENT_COMPOSE_BACKUP_TARGET_FOLDER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
