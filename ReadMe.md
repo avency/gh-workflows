@@ -17,6 +17,7 @@ Add the following variables (not secrets) to each environment:
 - **DEPLOYMENT_COMPOSE_SOURCE**: The path inside the repository where the deployment files are located (for example `Deployment/Live`).
 - **DEPLOYMENT_COMPOSE_TARGET**: The path on the server where files should be copied. :warning: **All files** in the target directory will be overwritten.
 - **ENV_FILENAME**: (optional) if there are multiple `.env` files, define which one to use here. A symlink is created during deployment.
+- **DEPLOYMENT_COMPOSE_ENVIRONMENT_SOURCE**: (optional) the path of the environment source in the repository. If this is set then `DEPLOYMENT_COMPOSE_SOURCE` should only contain shared files between every environment.
 
 Then create the following secrets:
 
@@ -37,6 +38,10 @@ They can also be optionally overridden in each environment.
 - **DEPLOY_EXEC_COMMAND_MIGRATION**: Run command migrations.
 - **DEPLOY_EXEC_ELASTICSEARCH_INDEX**: Build a classic Elasticsearch index.
 - **DEPLOY_EXEC_ELASTICSEARCH_QUEUE**: Create a queue to build the Elasticsearch index (note: the queue is cleared first).
+- **DEPLOYMENT_COMPOSE_DO_BACKUP**: Create a backup before deleting the deployment files
+- **DEPLOYMENT_COMPOSE_BACKUP_TARGET_FOLDER**: Path where the backup tar file should be placed
+- **DEPLOYMENT_COMPOSE_FORCE_RECREATE_CONTAINERS**: Force-Recreate Docker Containers. This should be set to `redis`
+
 
 If some secrets are identical across environments, they can also be defined globally under "Secrets and Variables" -> "Secrets".
 
@@ -59,7 +64,7 @@ on:
 
 jobs:
   php:
-    uses: avency/gh-workflows/.github/workflows/build-image.yml@v2
+    uses: avency/gh-workflows/.github/workflows/build-image.yml@v3
     permissions:
       contents: read
       packages: write
@@ -111,7 +116,7 @@ jobs:
 
   deploy:
     needs: [prepare]
-    uses: avency/gh-workflows/.github/workflows/deploy-neos.yml@v2
+    uses: avency/gh-workflows/.github/workflows/deploy-neos.yml@v3
     with:
       environment: ${{ inputs.environment }}
       version: ${{ github.ref_type == 'tag' && github.ref_name || needs.prepare.outputs.short_sha }}
