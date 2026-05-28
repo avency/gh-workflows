@@ -25,6 +25,10 @@ inputs:
     description: "Name of the .env file to symlink"
     required: false
     default: ''
+  deployment-force-recreate-containers:
+    description: "A list of containers to force recreate"
+    required: false
+    default: ''
 
   # backup
   backup-do-backup:
@@ -153,5 +157,9 @@ runs:
         timeout: "600s"
         script: |
           cd ${{ inputs.deployment-compose-target }}/
-          docker compose up -d --force-recreate redis
+
+          if [ -n "${{ inputs.deployment-force-recreate-containers }}" ]; then
+            docker compose up -d --force-recreate ${{ inputs.deployment-force-recreate-containers }}
+          fi
+
           docker compose up -d --remove-orphans
