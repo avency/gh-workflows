@@ -55,7 +55,7 @@ jobs:
           ref-type: ${{ github.ref_type }}
           deployment-compose-source: ${{ vars.DEPLOYMENT_COMPOSE_SOURCE }}
           deployment-compose-target: ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}
-          env-filename: ${{ vars.ENV_FILENAME }}
+          deployment-environment-env-filename: ${{ vars.ENV_FILENAME }}
           deployment-compose-do-upgrade: true
           backup-do-backup: ${{ vars.DEPLOYMENT_COMPOSE_DO_BACKUP }}
           backup-target-folder: ${{ vars.DEPLOYMENT_COMPOSE_BACKUP_TARGET_FOLDER }}

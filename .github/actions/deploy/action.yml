@@ -21,7 +21,7 @@ inputs:
     description: "Whether to upgrade the deployment"
     required: true
     default: 'true'
-  env-filename:
+  deployment-environment-env-filename:
     description: "Name of the .env file to symlink"
     required: false
     default: ''
@@ -88,7 +88,7 @@ runs:
 
     - name: Symlink .env file
       uses: appleboy/ssh-action@v1.2.5
-      if: ${{ inputs.env-filename != '' }}
+      if: ${{ inputs.deployment-environment-env-filename != '' }}
       with:
         host: ${{ inputs.SSH_HOST }}
         username: ${{ inputs.SSH_USERNAME }}
@@ -96,7 +96,7 @@ runs:
         port: ${{ inputs.SSH_PORT }}
         script: |
           cd ${{ inputs.deployment-compose-target }}/
-          ln -sfn ${{ inputs.env-filename }} .env
+          ln -sfn ${{ inputs.deployment-environment-env-filename }} .env
 
     - name: 'Upgrade 1: Override the VERSION variable with the branch name'
       # Run for branches (or when ref-type not set). Skip for tags so .env VERSION is not overwritten.
