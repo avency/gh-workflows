@@ -17,6 +17,10 @@ inputs:
   deployment-compose-target:
     description: "Target path on the remote server"
     required: true
+  deployment-compose-do-upgrade:
+    description: "Whether to upgrade the deployment"
+    required: true
+    default: 'true'
   env-filename:
     description: "Name of the .env file to symlink"
     required: false
@@ -86,6 +90,7 @@ runs:
 
     - name: 'Upgrade 2: Pull Images and stop containers'
       uses: appleboy/ssh-action@v1.2.5
+      if: ${{ inputs.deployment-compose-do-upgrade == 'true' }}
       with:
         host: ${{ inputs.SSH_HOST }}
         username: ${{ inputs.SSH_USERNAME }}
@@ -98,6 +103,7 @@ runs:
 
     - name: 'Upgrade 3: Stop containers'
       uses: appleboy/ssh-action@v1.2.5
+      if: ${{ inputs.deployment-compose-do-upgrade == 'true' }}
       with:
         host: ${{ inputs.SSH_HOST }}
         username: ${{ inputs.SSH_USERNAME }}
@@ -110,6 +116,7 @@ runs:
 
     - name: 'Upgrade 4: Start containers'
       uses: appleboy/ssh-action@v1.2.5
+      if: ${{ inputs.deployment-compose-do-upgrade == 'true' }}
       with:
         host: ${{ inputs.SSH_HOST }}
         username: ${{ inputs.SSH_USERNAME }}
