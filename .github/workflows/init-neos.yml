@@ -57,7 +57,7 @@ jobs:
     steps:
       - name: Local http check
         if: ${{ inputs.deploy-do-http-check }}
-        uses: avency/gh-workflows/.github/actions/local-http-check@v2
+        uses: avency/gh-workflows/.github/actions/local-http-check@v3
         with:
           deployment-compose-target: ${{ inputs.deployment-compose-target }}
           domain: ${{ inputs.domain }}
@@ -70,7 +70,7 @@ jobs:
 
       - name: Clear Cache
         if: ${{ inputs.deploy-exec-clear-cache-warmup }}
-        uses: avency/gh-workflows/.github/actions/neos-clear-cache@v2
+        uses: avency/gh-workflows/.github/actions/neos-clear-cache@v3
         with:
           deployment-compose-target: ${{ inputs.deployment-compose-target }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
@@ -80,7 +80,7 @@ jobs:
 
       - name: Migrate Database
         if: ${{ inputs.deploy-exec-migrate-database }}
-        uses: avency/gh-workflows/.github/actions/neos-migrate-database@v2
+        uses: avency/gh-workflows/.github/actions/neos-migrate-database@v3
         with:
           deployment-compose-target: ${{ inputs.deployment-compose-target }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
@@ -90,7 +90,7 @@ jobs:
 
       - name: Publish Static Resources
         if: ${{ inputs.deploy-exec-publish-resource }}
-        uses: avency/gh-workflows/.github/actions/neos-publish-resources@v2
+        uses: avency/gh-workflows/.github/actions/neos-publish-resources@v3
         with:
           deployment-compose-target: ${{ inputs.deployment-compose-target }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
@@ -100,7 +100,7 @@ jobs:
 
       - name: Command Migration
         if: ${{ inputs.deploy-exec-command-migration }}
-        uses: avency/gh-workflows/.github/actions/neos-command-migration@v2
+        uses: avency/gh-workflows/.github/actions/neos-command-migration@v3
         with:
           deployment-compose-target: ${{ inputs.deployment-compose-target }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
@@ -110,7 +110,7 @@ jobs:
 
       - name: Build Elasticsearch Index
         if: ${{ inputs.deploy-exec-elasticsearch-index == 'classic' || inputs.deploy-exec-elasticsearch-index == 'queue' }}
-        uses: avency/gh-workflows/.github/actions/neos-elasticsearch-index@v2
+        uses: avency/gh-workflows/.github/actions/neos-elasticsearch-index@v3
         with:
           deployment-compose-target: ${{ inputs.deployment-compose-target }}
           index-type: ${{ inputs.deploy-exec-elasticsearch-index }}
