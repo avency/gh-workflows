@@ -57,6 +57,8 @@ jobs:
           deployment-compose-target: ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}
           env-filename: ${{ vars.ENV_FILENAME }}
           deployment-compose-do-upgrade: true
+          backup-do-backup: ${{ vars.DEPLOYMENT_COMPOSE_DO_BACKUP }}
+          backup-target-folder: ${{ vars.DEPLOYMENT_COMPOSE_BACKUP_TARGET_FOLDER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USERNAME: ${{ secrets.SSH_USERNAME }}

@@ -26,6 +26,16 @@ inputs:
     required: false
     default: ''
 
+  # backup
+  backup-do-backup:
+    description: "Whether to backup the deployment"
+    required: true
+    default: 'false'
+  backup-target-folder:
+    description: "Target folder for the backup"
+    required: true
+    default: '/Backup/'
+
   # ssh
   SSH_HOST:
     description: 'SSH Host'
@@ -46,6 +56,24 @@ runs:
   steps:
     - name: Checkout repository
       uses: actions/checkout@v6
+
+    - name: Backup deployment target folder
+      if: ${{ inputs.backup-do-backup == 'true' }}
+      uses: appleboy/ssh-action@v1.2.5
+      with:
+        host: ${{ inputs.SSH_HOST }}
+        username: ${{ inputs.SSH_USERNAME }}
+        key: ${{ inputs.SSH_KEY }}
+        port: ${{ inputs.SSH_PORT }}
+        script: |
+          if [ -z "${{ inputs.backup-target-folder }}" ]; then
+            echo "Error: 'backup-target-folder' input is required, if backup-do-backup is true, but was not provided."
+            exit 1
+          fi
+
+          mkdir -p ${{ inputs.backup-target-folder }}/
+          cd ${{ inputs.backup-target-folder }}/
+          tar -czf "backup_$(date +%Y%m%d_%H%M%S).tar.gz" ${{ inputs.deployment-compose-target }}/
 
     - name: Copy deployment files to host
       uses: burnett01/rsync-deployments@8.0.4
