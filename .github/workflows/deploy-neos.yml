@@ -55,6 +55,7 @@ jobs:
           ref-type: ${{ github.ref_type }}
           deployment-compose-source: ${{ vars.DEPLOYMENT_COMPOSE_SOURCE }}
           deployment-compose-target: ${{ vars.DEPLOYMENT_COMPOSE_TARGET }}
+          deployment-environment-source: ${{ vars.DEPLOYMENT_COMPOSE_ENVIRONMENT_SOURCE }}
           deployment-environment-env-filename: ${{ vars.ENV_FILENAME }}
           deployment-compose-do-upgrade: true
           deployment-force-recreate-containers: ${{ vars.DEPLOYMENT_COMPOSE_FORCE_RECREATE_CONTAINERS }}

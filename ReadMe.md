@@ -129,7 +129,7 @@ jobs:
 
 ### deploy
 
-Deploy a Compose Project and rebuild the containers.
+Deploy a Compose Project and rebuild the containers. It is possible to merge two folders during the deployment.
 
 [Read more](./.github/actions/deploy/ReadMe.md)
 

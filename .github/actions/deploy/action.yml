@@ -21,6 +21,10 @@ inputs:
     description: "Whether to upgrade the deployment"
     required: true
     default: 'true'
+  deployment-environment-source:
+    description: "Source path for the environment deployment"
+    required: false
+    default: ''
   deployment-environment-env-filename:
     description: "Name of the .env file to symlink"
     required: false
@@ -89,6 +93,18 @@ runs:
         remote_key: ${{ inputs.SSH_KEY }}
         remote_path: ${{ inputs.deployment-compose-target }}
         path: ${{ inputs.deployment-compose-source }}
+
+    - name: Copy environment deployment files to host
+      if: ${{ inputs.deployment-environment-source != '' }}
+      uses: burnett01/rsync-deployments@8.0.4
+      with:
+        switches: "-avzr"
+        remote_host: ${{ inputs.SSH_HOST }}
+        remote_port: ${{ inputs.SSH_PORT }}
+        remote_user: ${{ inputs.SSH_USERNAME }}
+        remote_key: ${{ inputs.SSH_KEY }}
+        remote_path: ${{ inputs.deployment-compose-target }}
+        path: ${{ inputs.deployment-environment-source }}/
 
     - name: Symlink .env file
       uses: appleboy/ssh-action@v1.2.5
