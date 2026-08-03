@@ -183,7 +183,7 @@ runs:
           fi
 
           if [ -n "${{ inputs.deployment-start-container-profile-name }}" ]; then
-            docker compose up -d --remove-orphans --profile ${{ inputs.deployment-start-container-profile-name }}
+            docker compose --profile ${{ inputs.deployment-start-container-profile-name }} up -d --remove-orphans
           else
             docker compose up -d --remove-orphans
           fi

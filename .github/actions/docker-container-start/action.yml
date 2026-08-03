@@ -39,7 +39,7 @@ runs:
           cd ${{ inputs.deployment-compose-target }}/
 
           if [ -n "${{ inputs.compose-profile-name }}" ]; then
-            docker compose up -d --remove-orphans --profile ${{ inputs.compose-profile-name }}
+            docker compose --profile ${{ inputs.compose-profile-name }} up -d --remove-orphans
           else
             docker compose up -d --remove-orphans
           fi
