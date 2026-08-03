@@ -18,6 +18,7 @@ Add the following variables (not secrets) to each environment:
 - **DEPLOYMENT_COMPOSE_TARGET**: The path on the server where files should be copied. :warning: **All files** in the target directory will be overwritten.
 - **ENV_FILENAME**: (optional) if there are multiple `.env` files, define which one to use here. A symlink is created during deployment.
 - **DEPLOYMENT_COMPOSE_ENVIRONMENT_SOURCE**: (optional) the path of the environment source in the repository. If this is set then `DEPLOYMENT_COMPOSE_SOURCE` should only contain shared files between every environment.
+- **DEPLOYMENT_COMPOSE_INIT_PROFILE**: (optional) Name of the docker compose profile to use for starting the containers.
 
 Then create the following secrets:
 
@@ -137,6 +138,12 @@ jobs:
 Deploy a Compose Project and rebuild the containers. It is possible to merge two folders during the deployment.
 
 [Read more](./.github/actions/deploy/ReadMe.md)
+
+### docker-container-start
+
+Start docker containers (optional limited to a profile).
+
+[Read more](./.github/actions/docker-container-start/ReadMe.md)
 
 ### local-http-check
 
