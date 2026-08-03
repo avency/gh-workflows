@@ -144,6 +144,7 @@ jobs:
           deployment-environment-env-filename: '' # not needed, put the env file as .env into the environment folder
           deployment-compose-do-upgrade: true
           # deployment-force-recreate-containers: ${{ vars.DEPLOYMENT_COMPOSE_FORCE_RECREATE_CONTAINERS }}
+          deployment-start-container-profile-name: '' # optional, the profile that should be used for the initializtaion
           # backup-do-backup: ${{ vars.DEPLOYMENT_COMPOSE_DO_BACKUP }}
           # backup-target-folder: ${{ vars.DEPLOYMENT_COMPOSE_BACKUP_TARGET_FOLDER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}

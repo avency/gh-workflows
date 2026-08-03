@@ -1,0 +1,45 @@
+name: Docker Container Start
+description: Start a docker container
+
+inputs:
+  compose-target:
+    description: "Target path of the docker compose file"
+    required: true
+  compose-profile-name:
+    description: "Name of the docker compose profile to use"
+    required: false
+    default: ''
+
+  SSH_HOST:
+    description: 'SSH Host'
+    required: true
+  SSH_PORT:
+    description: 'SSH Port'
+    required: false
+    default: '22'
+  SSH_USERNAME:
+    description: 'SSH Username'
+    required: true
+  SSH_KEY:
+    description: 'SSH Key'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: 'Start containers'
+      uses: appleboy/ssh-action@v1.2.5
+      with:
+        host: ${{ inputs.SSH_HOST }}
+        username: ${{ inputs.SSH_USERNAME }}
+        key: ${{ inputs.SSH_KEY }}
+        port: ${{ inputs.SSH_PORT }}
+        timeout: "600s"
+        script: |
+          cd ${{ inputs.deployment-compose-target }}/
+
+          if [ -n "${{ inputs.compose-profile-name }}" ]; then
+            docker compose up -d --remove-orphans --profile ${{ inputs.compose-profile-name }}
+          else
+            docker compose up -d --remove-orphans
+          fi
