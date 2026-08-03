@@ -36,7 +36,7 @@ runs:
         port: ${{ inputs.SSH_PORT }}
         timeout: "600s"
         script: |
-          cd ${{ inputs.deployment-compose-target }}/
+          cd ${{ inputs.compose-target }}/
 
           if [ -n "${{ inputs.compose-profile-name }}" ]; then
             docker compose --profile ${{ inputs.compose-profile-name }} up -d --remove-orphans
