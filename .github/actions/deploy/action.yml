@@ -33,6 +33,10 @@ inputs:
     description: "A list of containers to force recreate"
     required: false
     default: ''
+  deployment-start-container-profile-name:
+    description: "Name of the docker compose profile to use for starting the containers"
+    required: false
+    default: ''
 
   # backup
   backup-do-backup:
@@ -178,4 +182,8 @@ runs:
             docker compose up -d --force-recreate ${{ inputs.deployment-force-recreate-containers }}
           fi
 
-          docker compose up -d --remove-orphans
+          if [ -n "${{ inputs.deployment-start-container-profile-name }}" ]; then
+            docker compose up -d --remove-orphans --profile ${{ inputs.deployment-start-container-profile-name }}
+          else
+            docker compose up -d --remove-orphans
+          fi
